@@ -10,7 +10,7 @@ from PIL import Image, ImageTk
 from player import Player
 from pokemon import Pokemon
 from leaderboards import Leaderboard
-from helper import get_next_unique_id  # NEW: Import the unique ID helper
+from helper import get_next_unique_id
 
 TOTAL_ROUNDS = 5
 
@@ -151,6 +151,7 @@ class LoginFrame(tk.Frame):
             messagebox.showerror("Error", str(e))
 
     def create_new_user(self):
+        from helper import get_next_unique_id
         new_username = simpledialog.askstring("New User", "Enter a new username:")
         if not new_username:
             return
@@ -178,7 +179,7 @@ class LoginFrame(tk.Frame):
         # Generate a new unique ID before saving
         new_id = get_next_unique_id("users.csv")
         print(f"[DEBUG] Generated new unique ID for new user: {new_id}")
-        # Optionally, reserve this ID in the database with initial zero values
+        # Reserve this ID in the database with initial zero values
         Leaderboard.update_leaderboard(new_id, new_username, "", 0, 0, 0, 0)
 
         new_row = {
@@ -239,10 +240,10 @@ class MainMenuFrame(tk.Frame):
 
         top = Toplevel(self)
         top.title("Leaderboard")
-        top.geometry("750x400")
+        top.geometry("800x400")
 
-        # We remove the LastName column from the displayed columns
-        columns = ("PlayerID", "FirstName", "Score", "Wins", "Losses", "GamesPlayed", "LastUpdated")
+        # Add a "Rank" column
+        columns = ("Rank", "PlayerID", "FirstName", "Score", "Wins", "Losses", "GamesPlayed", "LastUpdated")
         tree = ttk.Treeview(top, columns=columns, show="headings", height=15)
         tree.pack(side="left", fill="both", expand=True)
 
@@ -250,7 +251,7 @@ class MainMenuFrame(tk.Frame):
         scrollbar.pack(side="right", fill="y")
         tree.configure(yscrollcommand=scrollbar.set)
 
-        # Column headings
+        tree.heading("Rank", text="Rank")
         tree.heading("PlayerID", text="ID")
         tree.heading("FirstName", text="FirstName")
         tree.heading("Score", text="Score")
@@ -259,27 +260,30 @@ class MainMenuFrame(tk.Frame):
         tree.heading("GamesPlayed", text="Games")
         tree.heading("LastUpdated", text="LastUpdated")
 
-        # Column widths and alignment
+        tree.column("Rank", width=50, anchor="center")
         tree.column("PlayerID", width=50, anchor="center")
         tree.column("FirstName", width=120, anchor="center")
         tree.column("Score", width=60, anchor="center")
         tree.column("Wins", width=50, anchor="center")
         tree.column("Losses", width=60, anchor="center")
         tree.column("GamesPlayed", width=70, anchor="center")
-        tree.column("LastUpdated", width=200, anchor="center")
+        tree.column("LastUpdated", width=100, anchor="center")
 
-        for row in data_rows:
-            nice_date = format_datetime(row[7])
-            new_values = (
-                row[0],       # PlayerID
-                row[1] or "", # FirstName
-                row[3],       # Score
-                row[4],       # Wins
-                row[5],       # Losses
-                row[6],       # GamesPlayed
-                nice_date     # LastUpdated
+        # Enumerate rows to create a rank
+        for i, row in enumerate(data_rows, start=1):
+            # row => (PlayerID, FirstName, LastName, Score, Wins, Losses, GamesPlayed, LastUpdated)
+            rank = i
+            rank_values = (
+                rank,           # Rank
+                row[0],         # PlayerID
+                row[1] or "",   # FirstName
+                row[3],         # Score
+                row[4],         # Wins
+                row[5],         # Losses
+                row[6],         # GamesPlayed
+                format_datetime(row[7])
             )
-            tree.insert("", tk.END, values=new_values)
+            tree.insert("", tk.END, values=rank_values)
 
     def search_leaderboard_treeview(self):
         term = simpledialog.askstring("Search Leaderboard", "Enter a name or PlayerID:")
@@ -292,9 +296,9 @@ class MainMenuFrame(tk.Frame):
 
         top = Toplevel(self)
         top.title("Search Results")
-        top.geometry("750x400")
+        top.geometry("800x400")
 
-        columns = ("PlayerID", "FirstName", "Score", "Wins", "Losses", "GamesPlayed", "LastUpdated")
+        columns = ("Rank", "PlayerID", "FirstName", "Score", "Wins", "Losses", "GamesPlayed", "LastUpdated")
         tree = ttk.Treeview(top, columns=columns, show="headings", height=15)
         tree.pack(side="left", fill="both", expand=True)
 
@@ -302,6 +306,7 @@ class MainMenuFrame(tk.Frame):
         scrollbar.pack(side="right", fill="y")
         tree.configure(yscrollcommand=scrollbar.set)
 
+        tree.heading("Rank", text="Rank")
         tree.heading("PlayerID", text="ID")
         tree.heading("FirstName", text="FirstName")
         tree.heading("Score", text="Score")
@@ -310,26 +315,28 @@ class MainMenuFrame(tk.Frame):
         tree.heading("GamesPlayed", text="Games")
         tree.heading("LastUpdated", text="LastUpdated")
 
+        tree.column("Rank", width=50, anchor="center")
         tree.column("PlayerID", width=50, anchor="center")
         tree.column("FirstName", width=120, anchor="center")
         tree.column("Score", width=60, anchor="center")
         tree.column("Wins", width=50, anchor="center")
         tree.column("Losses", width=60, anchor="center")
         tree.column("GamesPlayed", width=70, anchor="center")
-        tree.column("LastUpdated", width=200, anchor="center")
+        tree.column("LastUpdated", width=100, anchor="center")
 
-        for row in data_rows:
-            nice_date = format_datetime(row[7])
-            new_values = (
+        for i, row in enumerate(data_rows, start=1):
+            rank = i
+            rank_values = (
+                rank,
                 row[0],
                 row[1] or "",
                 row[3],
                 row[4],
                 row[5],
                 row[6],
-                nice_date
+                format_datetime(row[7])
             )
-            tree.insert("", tk.END, values=new_values)
+            tree.insert("", tk.END, values=rank_values)
 
     def quit_app(self):
         self.controller.destroy()
@@ -414,7 +421,7 @@ class GameFrame(tk.Frame):
             self.finish_game()
             return
 
-        self.info_label.config(text=( 
+        self.info_label.config(text=(
             f"Round {self.current_round} / {TOTAL_ROUNDS} | "
             f"Wins: {self.controller.player.wins} | "
             f"Losses: {self.controller.player.losses}"
@@ -501,7 +508,7 @@ class GameFrame(tk.Frame):
         self.result_label.config(text=result)
         self.submit_button.config(state="disabled")
         self.next_round_button.config(state="normal")
-        self.info_label.config(text=( 
+        self.info_label.config(text=(
             f"Round {self.current_round} / {TOTAL_ROUNDS} | "
             f"Wins: {self.controller.player.wins} | "
             f"Losses: {self.controller.player.losses}"
