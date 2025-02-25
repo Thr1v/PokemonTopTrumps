@@ -51,3 +51,5 @@ From the Main Menu, start a new game, view/search the leaderboard, or quit.
 Play a 5-round match by selecting stats to compare on your Pokémon card.
 At game’s end, your results are updated in the leaderboard and displayed.
 Enjoy the game and good luck!
+
+Please also see other versions for a different approach. Version 1 runs off "main.py"
