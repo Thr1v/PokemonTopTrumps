@@ -10,6 +10,7 @@ from PIL import Image, ImageTk
 from player import Player
 from pokemon import Pokemon
 from leaderboards import Leaderboard
+from helper import get_next_unique_id  # NEW: Import the unique ID helper
 
 TOTAL_ROUNDS = 5
 
@@ -21,7 +22,6 @@ def format_datetime(dt_value):
     if not dt_value:
         return ""
     if hasattr(dt_value, 'strftime'):
-        # dt_value is a datetime object
         return dt_value.strftime("%d/%m/%Y")
     try:
         parsed = datetime.datetime.fromisoformat(str(dt_value))
@@ -175,10 +175,16 @@ class LoginFrame(tk.Frame):
             messagebox.showerror("Error", "That username already exists. Please choose another.")
             return
 
+        # Generate a new unique ID before saving
+        new_id = get_next_unique_id("users.csv")
+        print(f"[DEBUG] Generated new unique ID for new user: {new_id}")
+        # Optionally, reserve this ID in the database with initial zero values
+        Leaderboard.update_leaderboard(new_id, new_username, "", 0, 0, 0, 0)
+
         new_row = {
             "username": new_username,
             "password": new_password,
-            "PlayerID": "",
+            "PlayerID": str(new_id),
             "FirstName": new_username,
             "LastName": ""
         }
@@ -189,7 +195,7 @@ class LoginFrame(tk.Frame):
             writer.writeheader()
             writer.writerows(rows)
 
-        messagebox.showinfo("New User", f"User '{new_username}' created successfully!")
+        messagebox.showinfo("New User", f"User '{new_username}' created successfully with ID {new_id}!")
 
 # -----------------------------------------------------------------------------
 # Main Menu Frame
@@ -263,9 +269,7 @@ class MainMenuFrame(tk.Frame):
         tree.column("LastUpdated", width=200, anchor="center")
 
         for row in data_rows:
-            # row = (PlayerID, FirstName, LastName, Score, Wins, Losses, GamesPlayed, LastUpdated)
             nice_date = format_datetime(row[7])
-            # Omit LastName from the displayed columns
             new_values = (
                 row[0],       # PlayerID
                 row[1] or "", # FirstName
@@ -290,7 +294,6 @@ class MainMenuFrame(tk.Frame):
         top.title("Search Results")
         top.geometry("750x400")
 
-        # We remove the LastName column here as well
         columns = ("PlayerID", "FirstName", "Score", "Wins", "Losses", "GamesPlayed", "LastUpdated")
         tree = ttk.Treeview(top, columns=columns, show="headings", height=15)
         tree.pack(side="left", fill="both", expand=True)
@@ -411,7 +414,7 @@ class GameFrame(tk.Frame):
             self.finish_game()
             return
 
-        self.info_label.config(text=(
+        self.info_label.config(text=( 
             f"Round {self.current_round} / {TOTAL_ROUNDS} | "
             f"Wins: {self.controller.player.wins} | "
             f"Losses: {self.controller.player.losses}"
@@ -439,10 +442,6 @@ class GameFrame(tk.Frame):
         self.next_round_button.config(state="disabled")
 
     def display_pokemon(self, pokemon_obj, image_label, stats_label, reveal=True):
-        """
-        Loads the Pokémon image if it exists; otherwise, uses invalid.png as a fallback.
-        Debug prints are included to log the image path used.
-        """
         pokemon_name = pokemon_obj.name.lower()
         image_path = os.path.join("images", f"{pokemon_name}.png")
         print(f"[DEBUG] Attempting to load image for: {pokemon_name} at path: {image_path}")
@@ -458,7 +457,6 @@ class GameFrame(tk.Frame):
         if image_path:
             try:
                 img = Image.open(image_path)
-                # Use Resampling.LANCZOS for Pillow 9+ compatibility:
                 img = img.resize((200, 200), Image.Resampling.LANCZOS)
                 photo = ImageTk.PhotoImage(img)
                 image_label.configure(image=photo, text="")
@@ -503,7 +501,7 @@ class GameFrame(tk.Frame):
         self.result_label.config(text=result)
         self.submit_button.config(state="disabled")
         self.next_round_button.config(state="normal")
-        self.info_label.config(text=(
+        self.info_label.config(text=( 
             f"Round {self.current_round} / {TOTAL_ROUNDS} | "
             f"Wins: {self.controller.player.wins} | "
             f"Losses: {self.controller.player.losses}"

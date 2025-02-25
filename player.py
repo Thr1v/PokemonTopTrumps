@@ -1,7 +1,7 @@
 import csv
 import getpass
 from leaderboards import Leaderboard
-from helper import update_csv_with_player_id, get_max_player_id_from_csv
+from helper import update_csv_with_player_id, get_max_player_id_from_csv, get_next_unique_id
 
 class Player:
     def __init__(self, player_id, username, first_name="", last_name=""):
@@ -26,12 +26,14 @@ class Player:
                         print("Login successful!\n")
                         player_id_str = row.get('PlayerID', '').strip()
                         if not player_id_str:
-                            # Generate new ID by comparing CSV max and SQL max values.
-                            csv_max = get_max_player_id_from_csv(csv_filename)
-                            sql_max = Leaderboard.get_new_player_id() - 1  # get_new_player_id returns max+1
-                            new_id = max(csv_max, sql_max) + 1
+                            # Generate new ID using the centralized helper function.
+                            new_id = get_next_unique_id(csv_filename)
+                            print(f"[DEBUG] Generated new ID: {new_id}")
+                            # Insert a placeholder record into SQL so that the ID is reserved.
+                            # Here we assume zero scores; adjust as needed.
+                            Leaderboard.update_leaderboard(new_id, username, "", 0, 0, 0, 0)
+                            update_csv_with_player_id(username, new_id, csv_filename)
                             player_id = new_id
-                            update_csv_with_player_id(username, player_id, csv_filename)
                         else:
                             player_id = int(player_id_str)
                         return cls(player_id, username, row.get('FirstName', username), row.get('LastName', ''))

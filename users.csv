@@ -1,5 +1,8 @@
 username,password,PlayerID,FirstName,LastName
+zero,zero,0,,
 Dan,apples,1,,
 Zo,pears,2,,
 Damo,orange,3,,
-Harvey,kiwi,,Harvey,
+Harvey,kiwi,4,Harvey,
+Ross,lemon,5,Ross,
+Dylan,melon,6,Dylan,
